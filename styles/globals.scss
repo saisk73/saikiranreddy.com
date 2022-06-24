@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+
+* {
+  font-family: 'Rubik', sans-serif !important;
+  background-color: #bfc0ff;
+}
+
+
+.home {
+  &__heading {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+
+    background-image: linear-gradient(to right, #5e61f9, #5e61f9),
+      linear-gradient(to right, #5e61f9, #5e61f9);
+    background-position: left top, right top;
+    background-size: 50px 50px;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1px #5e61f9;
+    -webkit-text-stroke-width: 0.7px;
+    animation: flickeringAnimation 3s ease-in-out infinite;
+  }
+
+  &__subheading {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 2rem;
+  }
+
+  &__description {
+    font-size: 1.1rem;
+    margin-bottom: 1.6rem;
+  }
+
+  &__email {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 1.6rem;
+    color: #3337ff;
+    text-decoration: none;
+
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+// flickering light bulb text
+@keyframes flickeringAnimation {
+  0% {
+    -webkit-text-fill-color: transparent;
+  }
+  15% {
+    -webkit-text-fill-color: #5e61f9;
+  }
+  30% {
+    -webkit-text-fill-color: transparent;
+  }
+  75% {
+    -webkit-text-fill-color: transparent;
+  }
+  100% {
+    -webkit-text-fill-color: #5e61f9;
+  }
+}
+
+
+// extra large screen
+@media (min-width: 1200px) {
+  .container {
+    padding: 7rem !important;
+  }
+}
+
+// large screen
+@media (min-width: 992px) {
+  .container {
+    padding: 9rem;
+  }
+}
+
+// small screen
+@media (min-width: 768px) {
+  .container {
+    padding: 2rem;
+  }
+}
+
+// extra small screen
+@media (max-width: 767px) {
+  .container {
+    padding: 1.7rem;
+    padding-top: 3rem;
+  }
+}

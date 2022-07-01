@@ -1,10 +1,46 @@
 @import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
 
+$theme-light: #010101ef;
+$theme: #000000;
+$theme-pink: #FF00FF;
+$theme-blue:#7843E6;
+
 * {
   font-family: 'Rubik', sans-serif !important;
-  background-color: #bfc0ff;
+  background-color: $theme-light;
+  color: white;
+  margin: 0;
 }
 
+.navbar {
+  background-color: #010101b8;
+  background-blend-mode: overlay;
+  background-clip: padding-box;
+  background-origin: padding-box;
+  background-size: cover;
+  
+  position: fixed;
+  width: 100%;
+  top: 0;
+  z-index: 1;
+
+  // padding: 0.7rem;
+  padding-left: 0rem;
+  padding-bottom: 0.5rem;
+
+  &__logo {
+    padding-top: 0.3rem;
+    width:  2.5rem;
+    height: 2.5rem;
+    background-color: transparent;
+  }
+
+  &__container {
+    display: flex;
+    justify-content: center;
+    background-color: transparent;
+  }
+}
 
 .home {
   &__heading {
@@ -12,14 +48,15 @@
     font-weight: 700;
     margin-bottom: 1.5rem;
 
-    background-image: linear-gradient(to right, #5e61f9, #5e61f9),
-      linear-gradient(to right, #5e61f9, #5e61f9);
+    background-image: linear-gradient(to right, $theme-blue, $theme-blue),
+      linear-gradient(to right, $theme-blue, $theme-blue);
     background-position: left top, right top;
     background-size: 50px 50px;
     background-repeat: no-repeat;
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    -webkit-text-stroke: 1px #5e61f9;
+    -webkit-text-stroke: 1px $theme-pink;
     -webkit-text-stroke-width: 0.7px;
     animation: flickeringAnimation 3s ease-in-out infinite;
   }
@@ -49,13 +86,19 @@
   }
 }
 
+.container {
+  margin-top: 3.3rem;
+  background-color: $theme-light;
+  height: "100vh";
+}
+
 // flickering light bulb text
 @keyframes flickeringAnimation {
   0% {
     -webkit-text-fill-color: transparent;
   }
   15% {
-    -webkit-text-fill-color: #5e61f9;
+    -webkit-text-fill-color: $theme-blue;
   }
   30% {
     -webkit-text-fill-color: transparent;
@@ -64,7 +107,7 @@
     -webkit-text-fill-color: transparent;
   }
   100% {
-    -webkit-text-fill-color: #5e61f9;
+    -webkit-text-fill-color: $theme-blue;
   }
 }
 
@@ -72,6 +115,7 @@
 // extra large screen
 @media (min-width: 1200px) {
   .container {
+    padding-top: 5rem !important;
     padding: 7rem !important;
   }
 }
@@ -79,6 +123,7 @@
 // large screen
 @media (min-width: 992px) {
   .container {
+    padding-top: 6rem !important;
     padding: 9rem;
   }
 }
@@ -86,6 +131,7 @@
 // small screen
 @media (min-width: 768px) {
   .container {
+    padding-top: 1.5rem !important;
     padding: 2rem;
   }
 }
@@ -94,6 +140,6 @@
 @media (max-width: 767px) {
   .container {
     padding: 1.7rem;
-    padding-top: 3rem;
+    padding-top: 2rem;
   }
 }

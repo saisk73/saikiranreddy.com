@@ -20,7 +20,7 @@ const Home: NextPage = () => {
           currently studying Masters in MIS at the University of Memphis. I love
           to solve complex engineering problems. I&apos;m currently working on
           technologies React.js, Nodejs, Vue.js, Django, TypeScript, Docker,
-          Kubernetes, AWS, GCP, CDK, Java, Bamboo, Postgres, DynamoDB, MongoDB,
+          Kubernetes, AWS, GCP, CDK, Java, Bamboo, Jenkins, Registry, SSO, Postgres, DynamoDB, MongoDB,
           Redis, Kafka, RabbitMQ and more.
         </p>
         <p className="home__description">

@@ -19,21 +19,22 @@ const Home: NextPage = () => {
           I&apos;m a software engineer based in the United States. I&apos;m
           currently studying Masters in MIS at the University of Memphis. I love
           to solve complex engineering problems. I&apos;m currently working on
-          technologies React.js, Nodejs, Vue.js, Django, Docker, Kubernetes,
-          AWS, GCP, CDK, Java, TypeScript, and more.
+          technologies React.js, Nodejs, Vue.js, Django, TypeScript, Docker,
+          Kubernetes, AWS, GCP, CDK, Java, Bamboo, Postgres, DynamoDB, MongoDB,
+          Redis, Kafka, RabbitMQ and more.
         </p>
         <p className="home__description">
           I love to watch movies, read blogs (mostly about tech), explore new
           cuisines and, explore new places.
         </p>
-        <p className="home__contact">
+        <div className="home__contact">
           <p>
             <b>You can contact me at :</b>
           </p>{" "}
           <a href="mailto:hello@saikiranreddy.com" className="home__email">
             hello@saikiranreddy.com
           </a>
-        </p>
+        </div>
       </div>
 
       <footer></footer>

@@ -3,7 +3,8 @@
 $theme-light: #010101ef;
 $theme: #000000;
 $theme-pink: #FF00FF;
-$theme-blue:#7843E6;
+$theme-purple:#7843E6;
+$theme-blue: #00FFFF;
 
 $font-sans:  'Source Sans Pro', sans-serif !important;
 
@@ -51,8 +52,8 @@ $font-sans:  'Source Sans Pro', sans-serif !important;
     font-weight: 700;
     margin-bottom: 1.5rem;
 
-    background-image: linear-gradient(to right, $theme-blue, $theme-blue),
-      linear-gradient(to right, $theme-blue, $theme-blue);
+    background-image: linear-gradient(to right, $theme-purple, $theme-purple),
+      linear-gradient(to right, $theme-purple, $theme-purple);
     background-position: left top, right top;
     background-size: 50px 50px;
     background-repeat: no-repeat;
@@ -71,26 +72,33 @@ $font-sans:  'Source Sans Pro', sans-serif !important;
   }
 
   &__description {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     margin-bottom: 1.6rem;
     font-family: $font-sans;
   }
 
   &__contact {
-    font-size: 1.7rem;
+    border-radius: 0.5rem;
+    border: 0.7px solid $theme-blue;
+    padding: 0.5rem;
+    font-size: 1.1rem;
     font-weight: 900 !important;
     // margin-bottom: 1.6rem;
     font-family: $font-sans;
     font-style: italic;
     margin-bottom: 0;
+
+    // shadow with 3d effect white shadow
+    // shadow only to right and bottom
+    box-shadow: 0.2rem 0.2rem 0.1rem 0.1rem $theme-blue;
   }
 
   &__email {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     font-weight: 500;
     font-style: italic;
     margin-bottom: 1.6rem;
-    color: #3337ff;
+    color: $theme-purple;
     text-decoration: none;
 
 
@@ -112,7 +120,7 @@ $font-sans:  'Source Sans Pro', sans-serif !important;
     -webkit-text-fill-color: transparent;
   }
   15% {
-    -webkit-text-fill-color: $theme-blue;
+    -webkit-text-fill-color: $theme-purple;
   }
   30% {
     -webkit-text-fill-color: transparent;
@@ -121,7 +129,7 @@ $font-sans:  'Source Sans Pro', sans-serif !important;
     -webkit-text-fill-color: transparent;
   }
   100% {
-    -webkit-text-fill-color: $theme-blue;
+    -webkit-text-fill-color: $theme-purple;
   }
 }
 

@@ -1,13 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:ital,wght@0,200;0,300;0,400;0,600;0,700;0,900;1,200;1,300;1,400;1,600;1,700;1,900&display=swap');
 $theme-light: #010101ef;
 $theme: #000000;
 $theme-pink: #FF00FF;
 $theme-blue:#7843E6;
 
+$font-sans:  'Source Sans Pro', sans-serif !important;
+
+
 * {
   font-family: 'Rubik', sans-serif !important;
-  background-color: $theme-light;
+  background-color: $theme;
   color: white;
   margin: 0;
 }
@@ -62,19 +65,30 @@ $theme-blue:#7843E6;
   }
 
   &__subheading {
-    font-size: 1.5rem;
-    font-weight: 500;
+    font-size: 2rem;
+    font-weight: 800;
     margin-bottom: 2rem;
   }
 
   &__description {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
     margin-bottom: 1.6rem;
+    font-family: $font-sans;
+  }
+
+  &__contact {
+    font-size: 1.7rem;
+    font-weight: 900 !important;
+    // margin-bottom: 1.6rem;
+    font-family: $font-sans;
+    font-style: italic;
+    margin-bottom: 0;
   }
 
   &__email {
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     font-weight: 500;
+    font-style: italic;
     margin-bottom: 1.6rem;
     color: #3337ff;
     text-decoration: none;
@@ -126,6 +140,11 @@ $theme-blue:#7843E6;
     padding-top: 6rem !important;
     padding: 9rem;
   }
+  .home {
+    &__description {
+      max-width: 50rem;
+    }
+  }
 }
 
 // small screen
@@ -140,6 +159,6 @@ $theme-blue:#7843E6;
 @media (max-width: 767px) {
   .container {
     padding: 1.7rem;
-    padding-top: 2rem;
+    padding-top: 1rem;
   }
 }

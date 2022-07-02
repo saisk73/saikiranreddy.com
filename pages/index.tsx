@@ -26,8 +26,10 @@ const Home: NextPage = () => {
           I love to watch movies, read blogs (mostly about tech), explore new
           cuisines and, explore new places.
         </p>
-        <p className="home__description">
-          You contact me at {""}
+        <p className="home__contact">
+          <p>
+            <b>You contact me at :</b>
+          </p>{" "}
           <a href="mailto:hello@saikiranreddy.com" className="home__email">
             hello@saikiranreddy.com
           </a>

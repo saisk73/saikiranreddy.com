@@ -29,7 +29,7 @@ const Home: NextPage = () => {
         </p>
         <div className="home__contact">
           <p>
-            <b>You can contact me at :</b>
+            <b>Contact me at :</b>
           </p>{" "}
           <a href="mailto:hello@saikiranreddy.com" className="home__email">
             hello@saikiranreddy.com

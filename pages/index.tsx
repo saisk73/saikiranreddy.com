@@ -27,7 +27,7 @@ const Home: NextPage = () => {
           I love to watch movies, read blogs (mostly about tech), explore new
           cuisines and, explore new places.
         </p>
-        <div className="home__contact">
+        <div className="home__contact col-md-7">
           <p>
             <b>Contact me at :</b>
           </p>{" "}

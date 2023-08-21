@@ -91,6 +91,9 @@ $font-sans:  'Source Sans Pro', sans-serif !important;
     // shadow with 3d effect white shadow
     // shadow only to right and bottom
     box-shadow: 0.2rem 0.2rem 0.1rem 0.1rem $theme-blue;
+    @media (min-width: 768px) { 
+     width: 70%;
+    }
   }
 
   &__email {

@@ -15,11 +15,14 @@ const CustomCursor = () => {
         x: e.clientX,
         y: e.clientY,
         duration: 0.1,
+        ease: 'power2.out',
       });
+
       gsap.to(follower, {
         x: e.clientX,
         y: e.clientY,
-        duration: 0.3,
+        duration: 0.35,
+        ease: 'power3.out',
       });
     };
 
@@ -28,19 +31,25 @@ const CustomCursor = () => {
 
     document.addEventListener('mousemove', onMouseMove);
     
-    // Add magnetic effect to interactive elements
-    const interactiveElements = document.querySelectorAll('a, button, .interactive');
-    interactiveElements.forEach((el) => {
-      el.addEventListener('mouseenter', onMouseEnter);
-      el.addEventListener('mouseleave', onMouseLeave);
+    const addInteractiveListeners = () => {
+      const interactiveElements = document.querySelectorAll('a, button, .interactive');
+      interactiveElements.forEach((el) => {
+        el.addEventListener('mouseenter', onMouseEnter);
+        el.addEventListener('mouseleave', onMouseLeave);
+      });
+    };
+
+    addInteractiveListeners();
+
+    const observer = new MutationObserver(() => {
+      addInteractiveListeners();
     });
+
+    observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
       document.removeEventListener('mousemove', onMouseMove);
-      interactiveElements.forEach((el) => {
-        el.removeEventListener('mouseenter', onMouseEnter);
-        el.removeEventListener('mouseleave', onMouseLeave);
-      });
+      observer.disconnect();
     };
   }, []);
 
@@ -49,47 +58,83 @@ const CustomCursor = () => {
     const follower = followerRef.current;
     
     if (hovered) {
-        gsap.to(cursor, { scale: 0.5, duration: 0.2 });
-        gsap.to(follower, { scale: 3, opacity: 0.5, backgroundColor: '#fff', mixBlendMode: 'difference', duration: 0.2 });
+      gsap.to(cursor, { 
+        scale: 0, 
+        duration: 0.25,
+        ease: 'power2.out',
+      });
+      gsap.to(follower, { 
+        scale: 2.5, 
+        borderColor: 'rgba(255, 255, 255, 0.8)',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        duration: 0.35,
+        ease: 'power2.out',
+      });
     } else {
-        gsap.to(cursor, { scale: 1, duration: 0.2 });
-        gsap.to(follower, { scale: 1, opacity: 1, backgroundColor: 'transparent', mixBlendMode: 'normal', duration: 0.2 });
+      gsap.to(cursor, { 
+        scale: 1, 
+        duration: 0.25,
+        ease: 'power2.out',
+      });
+      gsap.to(follower, { 
+        scale: 1, 
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        backgroundColor: 'transparent',
+        duration: 0.35,
+        ease: 'power2.out',
+      });
     }
   }, [hovered]);
 
   return (
     <>
-      <div ref={cursorRef} className="cursor-dot" />
       <div ref={followerRef} className="cursor-follower" />
+      <div ref={cursorRef} className="cursor-dot" />
+      
       <style jsx global>{`
-        body {
+        @media (pointer: fine) {
+          body {
             cursor: none;
+          }
+
+          a, button, .interactive {
+            cursor: none;
+          }
         }
+
         .cursor-dot {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 8px;
-            height: 8px;
-            background: white;
-            border-radius: 50%;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            z-index: 9999;
-            mix-blend-mode: difference;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 6px;
+          height: 6px;
+          background: #fff;
+          border-radius: 50%;
+          pointer-events: none;
+          transform: translate(-50%, -50%);
+          z-index: 99999;
+          mix-blend-mode: difference;
         }
+
         .cursor-follower {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 40px;
-            height: 40px;
-            border: 1px solid white;
-            border-radius: 50%;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            z-index: 9998;
-            transition: width 0.3s, height 0.3s, background-color 0.3s;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 32px;
+          height: 32px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 50%;
+          pointer-events: none;
+          transform: translate(-50%, -50%);
+          z-index: 99998;
+          transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        @media (pointer: coarse) {
+          .cursor-dot,
+          .cursor-follower {
+            display: none;
+          }
         }
       `}</style>
     </>

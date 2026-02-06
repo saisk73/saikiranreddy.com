@@ -1,35 +1,77 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap');
 
 :root {
-  --bg-color: #050505;
-  --text-color: #f0f0f0;
-  --accent-color: #dbdbdb;
-  --font-main: 'Outfit', sans-serif;
-  --font-serif: 'Playfair Display', serif;
-  --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  // Pure black theme
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-elevated: #111111;
+  
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-muted: #555555;
+  
+  // Accent - pure white
+  --accent: #ffffff;
+  --accent-dim: rgba(255, 255, 255, 0.5);
+  
+  // Typography
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  --font-serif: 'Georgia', 'Times New Roman', serif;
+  --font-mono: 'Space Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+  
+  // Grid
+  --grid-color: rgba(255, 255, 255, 0.03);
+  
+  // Transitions
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-circ: cubic-bezier(0.85, 0, 0.15, 1);
 }
 
-html,
-body {
-  padding: 0;
+*, *::before, *::after {
+  box-sizing: border-box;
   margin: 0;
-  font-family: var(--font-main);
-  background-color: var(--bg-color);
-  color: var(--text-color);
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
+}
+
+body {
+  font-family: var(--font-display);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+  cursor: none;
+}
+
+// Subtle grain texture
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.02;
+  pointer-events: none;
+  z-index: 10000;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
 a {
   color: inherit;
   text-decoration: none;
+  transition: color 0.3s var(--ease-out-expo);
 }
 
-* {
-  box-sizing: border-box;
+::selection {
+  background: var(--accent);
+  color: var(--bg-primary);
 }
 
 // Custom Scrollbar
@@ -38,21 +80,23 @@ a {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-color);
+  background: var(--bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
+  background: var(--text-muted);
+  
+  &:hover {
+    background: var(--text-secondary);
+  }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
+// App content transitions
 .app-content {
+  position: relative;
+  z-index: 2;
   opacity: 1;
-  transition: opacity 1.5s ease;
+  transition: opacity 1s var(--ease-out-expo);
   
   &--hidden {
     opacity: 0;
@@ -62,60 +106,72 @@ a {
   }
 }
 
-// Typography & Utilities
+// Typography utilities
 .font-serif {
   font-family: var(--font-serif);
 }
 
-.text-huge {
-  font-family: var(--font-main);
-  font-size: clamp(4rem, 15vw, 16rem);
-  line-height: 0.9;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
-  margin: 0;
+.font-mono {
+  font-family: var(--font-mono);
 }
 
-.text-display {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 400;
-}
-
-.mix-blend-diff {
-  mix-blend-mode: difference;
-}
-
+// Section base
 .section {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 6rem 2rem;
+  padding: 8rem 2rem;
   position: relative;
-  z-index: 1;
+  z-index: 2;
+  background: var(--bg-primary);
 }
 
-// Ensure contact section is above pinned industries
 .section.contact {
   z-index: 100;
-  background: var(--bg-color);
+  background: var(--bg-primary);
 }
 
-// Fix for GSAP ScrollTrigger pin-spacer
 .pin-spacer {
   z-index: 1 !important;
+}
+
+// Mountain section specific styles
+.mountain-section {
+  background: var(--bg-primary);
+  z-index: 2;
 }
 
 .container {
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
+  padding: 0 4rem;
+  
+  @media (max-width: 768px) {
+    padding: 0 1.5rem;
+  }
 }
 
-// Interaction
+// Interactive elements
 .interactive {
-    cursor: none;
+  cursor: none;
+}
+
+// Animations
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawLine {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }

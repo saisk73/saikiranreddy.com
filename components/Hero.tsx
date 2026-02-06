@@ -1,461 +1,543 @@
 import React, { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
+import dynamic from "next/dynamic";
+
+// Dynamically import the 3D scene (client-only)
+const HeroScene = dynamic(() => import("./HeroScene"), { ssr: false });
+
+const ROLES = ["Creative", "Developer", "Architect", "Traveller", "Wizard"];
 
 const Hero = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const orbsRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [time, setTime] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isScrambling, setIsScrambling] = useState(false);
+  const scrambleChars = "!@#$%^&*()_+-=[]{}|;:,.<>?/~`ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+  // Update time
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setTime(
+        now.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZoneName: "short",
+        })
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Text scramble effect
+  const scrambleText = (element: HTMLElement, newText: string, callback?: () => void) => {
+    let iteration = 0;
+    const maxIterations = newText.length * 3;
+    
+    const interval = setInterval(() => {
+      element.innerText = newText
+        .split("")
+        .map((char, index) => {
+          if (index < iteration / 3) {
+            return newText[index];
+          }
+          return scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
+        })
+        .join("");
+      
+      iteration++;
+      
+      if (iteration >= maxIterations) {
+        clearInterval(interval);
+        element.innerText = newText;
+        if (callback) callback();
+      }
+    }, 30);
+  };
+
+  // Cycle through roles
+  useEffect(() => {
+    const cycleInterval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % ROLES.length);
+    }, 3000);
+
+    return () => clearInterval(cycleInterval);
+  }, []);
+
+  // Scramble animation when role changes
+  useEffect(() => {
+    const roleElement = document.querySelector('.role-text-main') as HTMLElement;
+    if (roleElement && !isScrambling) {
+      setIsScrambling(true);
+      scrambleText(roleElement, ROLES[activeIndex], () => {
+        setIsScrambling(false);
+      });
+    }
+  }, [activeIndex]);
 
   useEffect(() => {
-    const tl = gsap.timeline({ delay: 2 });
+    const tl = gsap.timeline({ delay: 2.2 });
 
-    // Animate each letter of the name
+    // Animate corner marks
     tl.fromTo(
-      ".hero-letter",
-      { y: 120, opacity: 0, rotateX: -90 },
+      ".hero-corner",
+      { opacity: 0, scale: 0.5 },
       {
-        y: 0,
         opacity: 1,
-        rotateX: 0,
-        duration: 1.2,
-        ease: "power4.out",
-        stagger: 0.04,
-      },
-    );
-
-    // Animate the decorative line
-    tl.fromTo(
-      ".hero-line",
-      { scaleX: 0 },
-      { scaleX: 1, duration: 1.5, ease: "power3.inOut" },
-      "-=0.8",
-    );
-
-    // Animate subtitle words
-    tl.fromTo(
-      ".hero-subtitle-word",
-      { y: 40, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.8, ease: "power3.out", stagger: 0.1 },
-      "-=1",
-    );
-
-    // Animate the orbs
-    tl.fromTo(
-      ".hero-orb",
-      { scale: 0, opacity: 0 },
-      {
         scale: 1,
-        opacity: 1,
-        duration: 1.5,
-        ease: "elastic.out(1, 0.5)",
-        stagger: 0.2,
-      },
-      "-=1.5",
+        duration: 0.8,
+        ease: "power3.out",
+        stagger: 0.05,
+      }
     );
 
-    // Animate marquee
+    // Animate role words (the floating ones)
     tl.fromTo(
-      ".marquee-container",
-      { opacity: 0 },
-      { opacity: 1, duration: 1 },
-      "-=1",
+      ".role-word",
+      { opacity: 0, y: 20, filter: "blur(10px)" },
+      {
+        opacity: 1,
+        y: 0,
+        filter: "blur(0px)",
+        duration: 1,
+        ease: "power3.out",
+        stagger: 0.1,
+      },
+      "-=0.5"
     );
 
-    // Continuous floating animation for orbs
-    gsap.to(".hero-orb", {
-      y: "random(-20, 20)",
-      x: "random(-20, 20)",
-      duration: "random(3, 5)",
-      ease: "sine.inOut",
+    // Animate main role text
+    tl.fromTo(
+      ".role-main-container",
+      { opacity: 0, scale: 0.9 },
+      { opacity: 1, scale: 1, duration: 1, ease: "power3.out" },
+      "-=0.8"
+    );
+
+    // Animate name
+    tl.fromTo(
+      ".hero-name",
+      { opacity: 0, y: 30 },
+      { opacity: 1, y: 0, duration: 1, ease: "power3.out" },
+      "-=0.6"
+    );
+
+    // Animate meta elements
+    tl.fromTo(
+      ".hero-meta",
+      { opacity: 0 },
+      { opacity: 1, duration: 0.8, ease: "power2.out", stagger: 0.1 },
+      "-=0.4"
+    );
+
+    // Animate scroll indicator
+    tl.fromTo(
+      ".scroll-cue",
+      { opacity: 0, y: -10 },
+      { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" },
+      "-=0.3"
+    );
+
+    // Continuous scroll line animation
+    gsap.to(".scroll-cue-line", {
+      y: 24,
+      opacity: 0,
+      duration: 1.2,
+      ease: "power2.in",
       repeat: -1,
-      yoyo: true,
-      stagger: {
-        each: 0.5,
-        from: "random",
-      },
+      repeatDelay: 0.6,
+    });
+
+    // Subtle floating animation for role words
+    document.querySelectorAll('.role-word').forEach((el, i) => {
+      gsap.to(el, {
+        y: "random(-8, 8)",
+        duration: "random(2, 4)",
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
+        delay: i * 0.2,
+      });
     });
   }, []);
 
-  // Mouse parallax effect
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 2;
-      const y = (e.clientY / window.innerHeight - 0.5) * 2;
-      setMousePos({ x, y });
-
-      if (orbsRef.current) {
-        const orbs = orbsRef.current.querySelectorAll(".hero-orb");
-        orbs.forEach((orb, i) => {
-          const speed = (i + 1) * 15;
-          gsap.to(orb, {
-            x: x * speed,
-            y: y * speed,
-            duration: 1,
-            ease: "power3.out",
-          });
-        });
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
-
-  const splitText = (text: string) => {
-    return text.split("").map((char, i) => (
-      <span
-        key={i}
-        className="hero-letter"
-        style={{ display: char === " " ? "inline" : "inline-block" }}
-      >
-        {char === " " ? "\u00A0" : char}
-      </span>
-    ));
-  };
-
-  const marqueeText =
-    "INNOVATION • ENGINEERING • ARCHITECTURE • DESIGN • STRATEGY • ";
-
   return (
-    <section ref={containerRef} className="hero-section">
-      {/* Gradient Orbs */}
-      <div ref={orbsRef} className="hero-orbs">
-        <div className="hero-orb hero-orb--1"></div>
-        <div className="hero-orb hero-orb--2"></div>
-        <div className="hero-orb hero-orb--3"></div>
-      </div>
+    <section ref={containerRef} className="hero">
+      {/* 3D Scene Background */}
+      <HeroScene />
 
-      {/* Noise overlay */}
-      <div className="noise-overlay"></div>
+      {/* Corner Marks */}
+      <div className="hero-corner hero-corner--tl"></div>
+      <div className="hero-corner hero-corner--tr"></div>
+      <div className="hero-corner hero-corner--bl"></div>
+      <div className="hero-corner hero-corner--br"></div>
 
-      {/* Main content */}
-      <div className="hero-content">
-        <div className="hero-title-wrapper">
-          <h1 className="hero-title">
-            <span className="hero-title-line">{splitText("SAI KIRAN")}</span>
-            <span className="hero-title-line hero-title-line--accent">
-              {splitText("REDDY")}
-            </span>
-          </h1>
-        </div>
-
-        <div className="hero-subtitle">
-          <span className="hero-subtitle-word">Software</span>
-          <span className="hero-subtitle-word">Engineer</span>
-          <span className="hero-subtitle-divider">&</span>
-          <span className="hero-subtitle-word">Solution</span>
-          <span className="hero-subtitle-word">Architect</span>
-        </div>
-
-        <div className="hero-cta">
-          <a href="#about" className="hero-cta-btn interactive">
-            <span>Explore Work</span>
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+      {/* Creative Role Display */}
+      <div className="role-display">
+        {/* Floating background words */}
+        <div className="role-words-floating">
+          {ROLES.map((role, index) => (
+            <span 
+              key={role} 
+              className={`role-word role-word--${index + 1} ${activeIndex === index ? 'role-word--active' : ''}`}
             >
-              <path d="M7 17L17 7M17 7H7M17 7V17" />
-            </svg>
-          </a>
+              {role}
+            </span>
+          ))}
+        </div>
+
+        {/* Main cycling text */}
+        <div className="role-main-container">
+          <span className="role-bracket">[</span>
+          <span className="role-text-main">{ROLES[0]}</span>
+          <span className="role-bracket">]</span>
         </div>
       </div>
 
-      {/* Marquee strip */}
-      <div className="marquee-container">
-        <div className="marquee">
-          <span className="marquee-text">{marqueeText.repeat(4)}</span>
-          <span className="marquee-text">{marqueeText.repeat(4)}</span>
-        </div>
+      {/* Name at bottom */}
+      <div className="hero-name">
+        <span className="name-line"></span>
+        <h1 className="name-text">Sai Kiran Reddy</h1>
+        <span className="name-line"></span>
       </div>
 
-      {/* Side elements */}
-      <div className="hero-side hero-side--left">
-        <span className="hero-side-text">PORTFOLIO 2026</span>
+      {/* Meta Information */}
+      <div className="hero-meta hero-meta--left">
+        <span className="meta-label">Location</span>
+        <span className="meta-value">United States</span>
       </div>
-      <div className="hero-side hero-side--right">
-        <span className="hero-side-text">CRAFTING DIGITAL EXCELLENCE</span>
+
+      <div className="hero-meta hero-meta--right">
+        <span className="meta-label">Local Time</span>
+        <span className="meta-value">{time}</span>
+      </div>
+
+      {/* Scroll Indicator */}
+      <div className="scroll-cue">
+        <div className="scroll-cue-track">
+          <div className="scroll-cue-line"></div>
+        </div>
+        <span className="scroll-cue-text">Scroll</span>
       </div>
 
       <style jsx>{`
-        .hero-section {
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500&display=swap');
+
+        .hero {
           height: 100vh;
           min-height: 100vh;
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
           position: relative;
-          z-index: 3;
-          background: var(--bg-color);
+          background: #000;
           overflow: hidden;
         }
 
-        .noise-overlay {
+        /* Corner Marks */
+        .hero-corner {
           position: absolute;
-          inset: 0;
-          opacity: 0.03;
-          pointer-events: none;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-        }
-
-        .hero-orbs {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          overflow: hidden;
-        }
-
-        .hero-orb {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(80px);
+          width: 40px;
+          height: 40px;
+          border-color: rgba(255, 255, 255, 0.2);
+          border-style: solid;
+          border-width: 0;
           opacity: 0;
+          z-index: 10;
         }
 
-        .hero-orb--1 {
-          width: 600px;
-          height: 600px;
-          background: radial-gradient(
-            circle,
-            rgba(100, 100, 255, 0.3) 0%,
-            transparent 70%
-          );
-          top: -20%;
-          right: -10%;
+        .hero-corner--tl {
+          top: 2rem;
+          left: 2rem;
+          border-top-width: 1px;
+          border-left-width: 1px;
         }
 
-        .hero-orb--2 {
-          width: 400px;
-          height: 400px;
-          background: radial-gradient(
-            circle,
-            rgba(255, 100, 150, 0.25) 0%,
-            transparent 70%
-          );
-          bottom: 10%;
-          left: -5%;
+        .hero-corner--tr {
+          top: 2rem;
+          right: 2rem;
+          border-top-width: 1px;
+          border-right-width: 1px;
         }
 
-        .hero-orb--3 {
-          width: 300px;
-          height: 300px;
-          background: radial-gradient(
-            circle,
-            rgba(100, 255, 200, 0.2) 0%,
-            transparent 70%
-          );
-          top: 40%;
-          right: 20%;
+        .hero-corner--bl {
+          bottom: 2rem;
+          left: 2rem;
+          border-bottom-width: 1px;
+          border-left-width: 1px;
         }
 
-        .hero-content {
-          position: relative;
-          z-index: 2;
-          text-align: center;
-          padding: 2rem;
+        .hero-corner--br {
+          bottom: 2rem;
+          right: 2rem;
+          border-bottom-width: 1px;
+          border-right-width: 1px;
         }
 
-        .hero-eyebrow {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 1.5rem;
-          margin-bottom: 3rem;
-          font-size: 0.75rem;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          opacity: 0.6;
-        }
-
-        .hero-line {
-          width: 60px;
-          height: 1px;
-          background: var(--text-color);
-          transform-origin: center;
-        }
-
-        .hero-title-wrapper {
-          perspective: 1000px;
-          margin-bottom: 2rem;
-        }
-
-        .hero-title {
-          font-family: var(--font-main);
-          font-size: clamp(3.5rem, 14vw, 14rem);
-          line-height: 0.85;
-          font-weight: 800;
-          letter-spacing: -0.04em;
-          text-transform: uppercase;
-          margin: 0;
-        }
-
-        .hero-title-line {
-          display: block;
-          overflow: hidden;
-        }
-
-        .hero-title-line--accent {
-          background: linear-gradient(135deg, #fff 0%, #888 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        .hero-letter {
-          opacity: 0;
-          transform-style: preserve-3d;
-          will-change: transform, opacity;
-        }
-
-        .hero-subtitle {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          flex-wrap: wrap;
-          font-family: var(--font-serif);
-          font-style: italic;
-          font-size: clamp(1rem, 2.5vw, 1.75rem);
-          margin-bottom: 3rem;
-        }
-
-        .hero-subtitle-word {
-          opacity: 0;
-        }
-
-        .hero-subtitle-divider {
-          opacity: 0.4;
-        }
-
-        .hero-cta {
-          margin-top: 1rem;
-        }
-
-        .hero-cta-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 1rem 2rem;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 50px;
-          font-size: 0.875rem;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          background: transparent;
-        }
-
-        .hero-cta-btn:hover {
-          background: var(--text-color);
-          color: var(--bg-color);
-          border-color: var(--text-color);
-          transform: translateY(-2px);
-        }
-
-        .hero-cta-btn svg {
-          transition: transform 0.3s ease;
-        }
-
-        .hero-cta-btn:hover svg {
-          transform: translate(3px, -3px);
-        }
-
-        .marquee-container {
-          position: absolute;
-          bottom: 15%;
-          left: 0;
-          right: 0;
-          overflow: hidden;
-          opacity: 0;
-        }
-
-        .marquee {
-          display: flex;
-          animation: marquee 40s linear infinite;
-        }
-
-        .marquee-text {
-          flex-shrink: 0;
-          font-size: clamp(0.75rem, 1.5vw, 1rem);
-          letter-spacing: 0.3em;
-          text-transform: uppercase;
-          white-space: nowrap;
-          opacity: 0.15;
-          font-weight: 300;
-        }
-
-        @keyframes marquee {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-
-        .hero-side {
+        /* Role Display */
+        .role-display {
           position: absolute;
           top: 50%;
-          transform: translateY(-50%);
-          writing-mode: vertical-rl;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 5;
+          width: 100%;
+          max-width: 900px;
+          height: 300px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .role-words-floating {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+        }
+
+        .role-word {
+          position: absolute;
+          font-family: 'Space Grotesk', sans-serif;
+          font-weight: 300;
+          text-transform: uppercase;
+          letter-spacing: 0.3em;
+          color: rgba(255, 255, 255, 0.06);
+          transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+          opacity: 0;
+        }
+
+        .role-word--active {
+          color: rgba(255, 255, 255, 0.15);
+        }
+
+        .role-word--1 {
+          top: 10%;
+          left: 5%;
+          font-size: 1.2rem;
+        }
+
+        .role-word--2 {
+          top: 25%;
+          right: 8%;
+          font-size: 0.9rem;
+        }
+
+        .role-word--3 {
+          bottom: 30%;
+          left: 12%;
+          font-size: 1rem;
+        }
+
+        .role-word--4 {
+          bottom: 15%;
+          right: 15%;
+          font-size: 1.1rem;
+        }
+
+        .role-word--5 {
+          top: 40%;
+          left: 25%;
+          font-size: 0.85rem;
+        }
+
+        .role-main-container {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+          opacity: 0;
+        }
+
+        .role-bracket {
+          font-family: 'Space Grotesk', sans-serif;
+          font-size: 4rem;
+          font-weight: 300;
+          color: rgba(255, 255, 255, 0.2);
+        }
+
+        .role-text-main {
+          font-family: 'Space Grotesk', sans-serif;
+          font-size: 3.5rem;
+          font-weight: 400;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.9);
+          min-width: 320px;
+          text-align: center;
+        }
+
+        /* Name at bottom */
+        .hero-name {
+          position: absolute;
+          bottom: 6rem;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 10;
+          display: flex;
+          align-items: center;
+          gap: 2rem;
+          opacity: 0;
+        }
+
+        .name-line {
+          width: 60px;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        }
+
+        .name-text {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 1.6rem;
+          font-weight: 400;
+          letter-spacing: 0.35em;
+          text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.85);
+          white-space: nowrap;
+        }
+
+        /* Meta */
+        .hero-meta {
+          position: absolute;
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          opacity: 0;
+          z-index: 10;
+        }
+
+        .hero-meta--left {
+          left: 2rem;
+          top: 2rem;
+        }
+
+        .hero-meta--right {
+          right: 2rem;
+          top: 2rem;
+          text-align: right;
+        }
+
+        .meta-label {
+          font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
           font-size: 0.65rem;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.35);
+        }
+
+        .meta-value {
+          font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+          font-size: 0.8rem;
+          letter-spacing: 0.05em;
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Scroll Indicator */
+        .scroll-cue {
+          position: absolute;
+          right: 2rem;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.75rem;
+          opacity: 0;
+          z-index: 10;
+        }
+
+        .scroll-cue-track {
+          width: 1px;
+          height: 50px;
+          background: rgba(255, 255, 255, 0.1);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .scroll-cue-line {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 16px;
+          background: rgba(255, 255, 255, 0.6);
+        }
+
+        .scroll-cue-text {
+          font-family: 'SF Mono', monospace;
+          font-size: 0.6rem;
           letter-spacing: 0.2em;
           text-transform: uppercase;
-          opacity: 0.3;
-        }
-
-        .hero-side--left {
-          left: 2rem;
-          transform: translateY(-50%) rotate(180deg);
-        }
-
-        .hero-side--right {
-          right: 2rem;
-        }
-
-        .hero-side-text {
-          display: block;
+          color: rgba(255, 255, 255, 0.4);
+          writing-mode: vertical-rl;
         }
 
         @media (max-width: 768px) {
-          .hero-eyebrow {
-            gap: 1rem;
-            margin-bottom: 2rem;
+          .hero-corner {
+            width: 24px;
+            height: 24px;
           }
 
-          .hero-line {
-            width: 40px;
+          .hero-corner--tl,
+          .hero-corner--bl {
+            left: 1rem;
           }
 
-          .hero-subtitle {
-            gap: 0.5rem;
+          .hero-corner--tr,
+          .hero-corner--br {
+            right: 1rem;
           }
 
-          .hero-side {
+          .hero-corner--tl,
+          .hero-corner--tr {
+            top: 1rem;
+          }
+
+          .hero-corner--bl,
+          .hero-corner--br {
+            bottom: 1rem;
+          }
+
+          .hero-meta--left,
+          .hero-meta--right {
             display: none;
           }
 
-          .hero-orb--1 {
-            width: 300px;
-            height: 300px;
+          .role-bracket {
+            font-size: 2.5rem;
           }
 
-          .hero-orb--2 {
-            width: 200px;
-            height: 200px;
+          .role-text-main {
+            font-size: 1.8rem;
+            min-width: 180px;
+            letter-spacing: 0.1em;
           }
 
-          .hero-orb--3 {
-            width: 150px;
-            height: 150px;
+          .role-main-container {
+            gap: 0.75rem;
           }
 
-          .marquee-container {
-            bottom: 12%;
+          .role-words-floating {
+            display: none;
+          }
+
+          .hero-name {
+            bottom: 4rem;
+            gap: 1rem;
+          }
+
+          .name-text {
+            font-size: 1.1rem;
+            letter-spacing: 0.2em;
+          }
+
+          .name-line {
+            width: 30px;
+          }
+
+          .scroll-cue {
+            right: 1rem;
           }
         }
       `}</style>

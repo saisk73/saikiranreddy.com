@@ -2,88 +2,178 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 
-const Terrain = () => {
-  const mesh = useRef<THREE.Mesh>(null);
-  
-  // Generate vertices for the terrain
-  const geometry = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(100, 100, 60, 60);
-    const count = geo.attributes.position.count;
-    const randoms = new Float32Array(count);
-    
-    for (let i = 0; i < count; i++) {
-      randoms[i] = Math.random();
-    }
-    
-    geo.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1));
-    return geo;
-  }, []);
-
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uColor: { value: new THREE.Color('#dbdbdb') },
-  }), []);
+// Architectural Grid Lines
+const GridLines = () => {
+  const linesRef = useRef<THREE.Group>(null);
 
   useFrame((state) => {
-    const { clock } = state;
-    if (mesh.current) {
-        // @ts-ignore
-      mesh.current.material.uniforms.uTime.value = clock.getElapsedTime();
+    if (linesRef.current) {
+      linesRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.1) * 0.05;
+      linesRef.current.rotation.z = Math.cos(state.clock.elapsedTime * 0.08) * 0.03;
     }
   });
 
-  const vertexShader = `
-    uniform float uTime;
-    attribute float aRandom;
-    varying float vElevation;
-
-    void main() {
-      vec4 modelPosition = modelMatrix * vec4(position, 1.0);
-      
-      float elevation = sin(modelPosition.x * 0.1 + uTime * 0.2) * sin(modelPosition.y * 0.1 + uTime * 0.2) * 2.0;
-      elevation += sin(modelPosition.x * 0.3 + uTime * 0.5) * sin(modelPosition.y * 0.3 + uTime * 0.5) * 0.5;
-      
-      modelPosition.z += elevation;
-      
-      vec4 viewPosition = viewMatrix * modelPosition;
-      vec4 projectedPosition = projectionMatrix * viewPosition;
-      
-      gl_Position = projectedPosition;
-      vElevation = elevation;
+  const lines = useMemo(() => {
+    const positions: number[][] = [];
+    const gridSize = 40;
+    const spacing = 4;
+    
+    // Vertical lines
+    for (let i = -gridSize; i <= gridSize; i += spacing) {
+      positions.push([i, -gridSize, 0, i, gridSize, 0]);
     }
-  `;
-
-  const fragmentShader = `
-    uniform vec3 uColor;
-    varying float vElevation;
-
-    void main() {
-      float alpha = (vElevation + 1.0) * 0.5;
-      gl_FragColor = vec4(uColor, alpha * 0.5 + 0.1);
+    
+    // Horizontal lines
+    for (let i = -gridSize; i <= gridSize; i += spacing) {
+      positions.push([-gridSize, i, 0, gridSize, i, 0]);
     }
-  `;
+    
+    return positions;
+  }, []);
 
   return (
-    <mesh ref={mesh} rotation={[-Math.PI / 2, 0, 0]} position={[0, -5, -10]}>
-      <primitive object={geometry} attach="geometry" />
-      <shaderMaterial
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={uniforms}
-        transparent={true}
-        wireframe={true}
-        side={THREE.DoubleSide}
+    <group ref={linesRef} position={[0, 0, -20]}>
+      {lines.map((pos, i) => (
+        <line key={i}>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              count={2}
+              array={new Float32Array(pos)}
+              itemSize={3}
+            />
+          </bufferGeometry>
+          <lineBasicMaterial 
+            color="#c9a962" 
+            transparent 
+            opacity={0.03 + Math.random() * 0.02}
+          />
+        </line>
+      ))}
+    </group>
+  );
+};
+
+// Floating Particles
+const Particles = () => {
+  const particlesRef = useRef<THREE.Points>(null);
+  
+  const [positions, sizes] = useMemo(() => {
+    const count = 100;
+    const positions = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 80;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 80;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 40 - 10;
+      sizes[i] = Math.random() * 2 + 0.5;
+    }
+    
+    return [positions, sizes];
+  }, []);
+
+  useFrame((state) => {
+    if (particlesRef.current) {
+      particlesRef.current.rotation.y = state.clock.elapsedTime * 0.02;
+      particlesRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.05) * 0.1;
+    }
+  });
+
+  return (
+    <points ref={particlesRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={positions.length / 3}
+          array={positions}
+          itemSize={3}
+        />
+        <bufferAttribute
+          attach="attributes-size"
+          count={sizes.length}
+          array={sizes}
+          itemSize={1}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.5}
+        color="#c9a962"
+        transparent
+        opacity={0.4}
+        sizeAttenuation
       />
+    </points>
+  );
+};
+
+// Geometric Accent Shape
+const AccentGeometry = () => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.x = state.clock.elapsedTime * 0.1;
+      meshRef.current.rotation.y = state.clock.elapsedTime * 0.15;
+      meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.3) * 2;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={[15, 5, -15]}>
+      <icosahedronGeometry args={[3, 1]} />
+      <meshBasicMaterial 
+        color="#c9a962" 
+        wireframe 
+        transparent 
+        opacity={0.15}
+      />
+    </mesh>
+  );
+};
+
+// Ambient Light Ring
+const LightRing = () => {
+  const ringRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (ringRef.current) {
+      ringRef.current.rotation.x = Math.PI / 2;
+      ringRef.current.rotation.z = state.clock.elapsedTime * 0.05;
+    }
+  });
+
+  return (
+    <mesh ref={ringRef} position={[0, 0, -10]}>
+      <torusGeometry args={[20, 0.02, 16, 100]} />
+      <meshBasicMaterial color="#c9a962" transparent opacity={0.1} />
     </mesh>
   );
 };
 
 const Scene = () => {
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1, pointerEvents: 'none' }}>
-      <Canvas camera={{ position: [0, 5, 15], fov: 45 }}>
-        <fog attach="fog" args={['#0a0a0a', 5, 30]} />
-        <Terrain />
+    <div 
+      style={{ 
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        width: '100%', 
+        height: '100%', 
+        zIndex: 0, 
+        pointerEvents: 'none',
+        opacity: 0.7,
+      }}
+    >
+      <Canvas 
+        camera={{ position: [0, 0, 30], fov: 50 }}
+        dpr={[1, 1.5]}
+      >
+        <fog attach="fog" args={['#0a0a08', 20, 60]} />
+        <GridLines />
+        <Particles />
+        <AccentGeometry />
+        <LightRing />
       </Canvas>
     </div>
   );

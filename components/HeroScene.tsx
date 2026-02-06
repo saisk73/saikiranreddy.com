@@ -183,11 +183,11 @@ const OrbitalArcs = () => {
       {arcs.map((arc, i) => {
         const points = arc.curve.getPoints(50);
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.15 });
+        const lineObj = new THREE.Line(geometry, material);
         
         return (
-          <line key={i} geometry={geometry}>
-            <lineBasicMaterial color="#ffffff" transparent opacity={0.15} />
-          </line>
+          <primitive key={i} object={lineObj} />
         );
       })}
     </group>
@@ -228,9 +228,7 @@ const FloatingParticles = () => {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={positions.length / 3}
-          array={positions}
-          itemSize={3}
+          args={[positions, 3]}
         />
       </bufferGeometry>
       <pointsMaterial
@@ -297,10 +295,10 @@ const ConnectionLines = () => {
     <group ref={linesRef}>
       {lines.map((points, i) => {
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.1 });
+        const lineObj = new THREE.Line(geometry, material);
         return (
-          <line key={i} geometry={geometry}>
-            <lineBasicMaterial color="#ffffff" transparent opacity={0.1} />
-          </line>
+          <primitive key={i} object={lineObj} />
         );
       })}
     </group>

@@ -33,23 +33,17 @@ const GridLines = () => {
 
   return (
     <group ref={linesRef} position={[0, 0, -20]}>
-      {lines.map((pos, i) => (
-        <line key={i}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={2}
-              array={new Float32Array(pos)}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial 
-            color="#c9a962" 
-            transparent 
-            opacity={0.03 + Math.random() * 0.02}
-          />
-        </line>
-      ))}
+      {lines.map((pos, i) => {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        const material = new THREE.LineBasicMaterial({ 
+          color: '#c9a962', 
+          transparent: true, 
+          opacity: 0.03 + Math.random() * 0.02 
+        });
+        const lineObj = new THREE.Line(geometry, material);
+        return <primitive key={i} object={lineObj} />;
+      })}
     </group>
   );
 };
@@ -85,15 +79,11 @@ const Particles = () => {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={positions.length / 3}
-          array={positions}
-          itemSize={3}
+          args={[positions, 3]}
         />
         <bufferAttribute
           attach="attributes-size"
-          count={sizes.length}
-          array={sizes}
-          itemSize={1}
+          args={[sizes, 1]}
         />
       </bufferGeometry>
       <pointsMaterial

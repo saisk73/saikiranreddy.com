@@ -112,34 +112,39 @@ const MountainTerrain = () => {
     const positions = geometry.attributes.position.array as Float32Array;
     const heightData: number[] = [];
     
+    const peakHeight = 60;
+    const peakSigma = 28;
+
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const z = positions[i + 1];
-      
-      // Multi-octave fractal noise for realistic mountains
-      let height = 0;
+      const dist = Math.sqrt(x * x + z * z);
+
+      // 1) Gaussian peak — gives a clear mountain cone shape
+      const base = peakHeight * Math.exp(-(dist * dist) / (2 * peakSigma * peakSigma));
+
+      // 2) Multi-octave noise for surface detail
+      let detail = 0;
       let amplitude = 1;
-      let frequency = 0.008;
-      
-      for (let octave = 0; octave < 8; octave++) {
-        height += simplex.noise2D(x * frequency, z * frequency) * amplitude;
+      let frequency = 0.015;
+      for (let octave = 0; octave < 6; octave++) {
+        detail += simplex.noise2D(x * frequency, z * frequency) * amplitude;
         amplitude *= 0.5;
         frequency *= 2;
       }
-      
-      // Add ridges using absolute value
-      const ridgeNoise = Math.abs(simplex.noise2D(x * 0.012, z * 0.012));
-      height += (1 - ridgeNoise) * 8;
-      
-      // Sharpen peaks
-      height = Math.pow(Math.max(0, height + 1), 1.5) * 12;
-      
-      // Add dramatic central mountain range
-      const distFromCenter = Math.sqrt(x * x + z * z);
-      const rangeFactor = Math.max(0, 1 - distFromCenter / 60);
-      height += rangeFactor * 25 * (1 + simplex.noise2D(x * 0.02, z * 0.02));
-      
-      // Negate height so after rotation it points UP (positive Y)
+
+      // 3) Ridge noise — sharp ridges radiating from peak
+      const ridgeNoise = 1 - Math.abs(simplex.noise2D(x * 0.02, z * 0.02));
+      const ridgeHeight = ridgeNoise * ridgeNoise * 8;
+
+      // 4) Combine: base shape + detail scaled by proximity + ridges
+      const proximityScale = Math.max(0.15, 1 - dist / 80);
+      let height = base + detail * 4 * proximityScale + ridgeHeight * proximityScale;
+
+      // 5) Surrounding foothills so terrain isn't flat at the edges
+      const foothills = Math.max(0, simplex.noise2D(x * 0.01, z * 0.01) * 6 + 2);
+      height = Math.max(height, foothills);
+
       positions[i + 2] = height;
       heightData.push(height);
     }
@@ -158,10 +163,10 @@ const MountainTerrain = () => {
         uFogColor: { value: new THREE.Color(0x000000) },
         uFogNear: { value: 30 },
         uFogFar: { value: 150 },
-        uSnowLine: { value: 35 },
-        uRockColor: { value: new THREE.Color(0x1a1a1a) },
-        uSnowColor: { value: new THREE.Color(0xffffff) },
-        uLightDir: { value: new THREE.Vector3(0.5, 0.8, 0.3).normalize() },
+        uSnowLine: { value: 28 },
+        uRockColor: { value: new THREE.Color(0x3a3530) },
+        uSnowColor: { value: new THREE.Color(0xeef0f5) },
+        uLightDir: { value: new THREE.Vector3(0.4, 0.7, 0.5).normalize() },
       },
       vertexShader: `
         varying vec3 vPosition;
@@ -193,8 +198,8 @@ const MountainTerrain = () => {
           // Lighting
           vec3 normal = normalize(vNormal);
           float diffuse = max(dot(normal, uLightDir), 0.0);
-          float ambient = 0.15;
-          float lighting = ambient + diffuse * 0.85;
+          float ambient = 0.25;
+          float lighting = ambient + diffuse * 0.75;
           
           // Snow based on height and slope
           float slope = 1.0 - abs(normal.y);
@@ -248,7 +253,7 @@ const AtmosphericParticles = () => {
     
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 150;
-      positions[i * 3 + 1] = Math.random() * 80;
+      positions[i * 3 + 1] = Math.random() * 100;
       positions[i * 3 + 2] = (Math.random() - 0.5) * 150;
       
       velocities[i * 3] = (Math.random() - 0.5) * 0.02;
@@ -482,46 +487,42 @@ interface CameraControllerProps {
 
 const CameraController: React.FC<CameraControllerProps> = ({ scrollProgress }) => {
   const { camera } = useThree();
-  const targetRef = useRef({ x: 0, y: 30, z: 70, lookX: 0, lookY: 15, lookZ: 0 });
-  
+  const targetRef = useRef({ x: 0, y: 10, z: 100, lookX: 0, lookY: 30, lookZ: 0 });
+
   useEffect(() => {
-    // Define camera path based on scroll progress
-    // Start: Wide panoramic view looking at the mountain range
-    // Middle: Fly towards and arc around the peaks
-    // End: Close to the highest peak summit
-    
+    // Camera climbs the mountain as user scrolls
+    // Start: Far back at base, full mountain silhouette visible
+    // Middle: Ascending the mountain face, getting close
+    // End: Arriving at the summit, looking out
+
     const progress = Math.max(0, Math.min(1, scrollProgress));
-    
-    // Phase 1: Wide establishing shot (0-0.3)
-    // Phase 2: Approach and arc around mountain (0.3-0.7)
-    // Phase 3: Zoom to summit (0.7-1.0)
-    
+
     let x, y, z, lookY;
-    
+
     if (progress < 0.3) {
-      // Wide establishing shot - viewing from front
+      // Base camp — full mountain visible, camera low and far
       const t = progress / 0.3;
-      x = THREE.MathUtils.lerp(0, 15, t);
-      y = THREE.MathUtils.lerp(30, 28, t);
-      z = THREE.MathUtils.lerp(70, 55, t);
-      lookY = THREE.MathUtils.lerp(15, 18, t);
+      x = THREE.MathUtils.lerp(0, 10, t);
+      y = THREE.MathUtils.lerp(10, 15, t);
+      z = THREE.MathUtils.lerp(100, 70, t);
+      lookY = THREE.MathUtils.lerp(30, 35, t);
     } else if (progress < 0.7) {
-      // Arc around the mountain - getting closer
+      // Ascending — camera rises toward snow line and closer
       const t = (progress - 0.3) / 0.4;
-      const angle = THREE.MathUtils.lerp(0.25, -0.15, t);
-      const radius = THREE.MathUtils.lerp(50, 30, t);
+      const angle = THREE.MathUtils.lerp(0.2, -0.1, t);
+      const radius = THREE.MathUtils.lerp(70, 25, t);
       x = Math.sin(angle) * radius;
-      y = THREE.MathUtils.lerp(28, 25, t);
+      y = THREE.MathUtils.lerp(15, 45, t);
       z = Math.cos(angle) * radius;
-      lookY = THREE.MathUtils.lerp(18, 25, t);
+      lookY = THREE.MathUtils.lerp(35, 50, t);
     } else {
-      // Zoom to summit - dramatic final approach
+      // Summit — near the peak, looking out at the world
       const t = (progress - 0.7) / 0.3;
       const easeT = 1 - Math.pow(1 - t, 3);
-      x = THREE.MathUtils.lerp(-4, 0, easeT);
-      y = THREE.MathUtils.lerp(25, 35, easeT);
+      x = THREE.MathUtils.lerp(-3, 3, easeT);
+      y = THREE.MathUtils.lerp(45, 62, easeT);
       z = THREE.MathUtils.lerp(25, 10, easeT);
-      lookY = THREE.MathUtils.lerp(25, 32, easeT);
+      lookY = THREE.MathUtils.lerp(50, 55, easeT);
     }
     
     targetRef.current = { x, y, z, lookX: 0, lookY, lookZ: 0 };
@@ -600,12 +601,12 @@ interface MountainSceneProps {
 const MountainCanvas: React.FC<MountainSceneProps> = ({ scrollProgress }) => {
   return (
     <Canvas
-      camera={{ position: [0, 30, 70], fov: 55, near: 0.1, far: 1000 }}
+      camera={{ position: [0, 10, 100], fov: 55, near: 0.1, far: 1000 }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: false }}
     >
       <color attach="background" args={['#000000']} />
-      <fog attach="fog" args={['#000000', 80, 250]} />
+      <fog attach="fog" args={['#000000', 60, 200]} />
       
       {/* Lighting */}
       <ambientLight intensity={0.1} />

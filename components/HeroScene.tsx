@@ -1,8 +1,13 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { THREAD_LENGTH_END, THREAD_ORIGIN } from "../constants";
 
-const ThreadTunnel = () => {
+interface ScrollRef {
+  scrollProgress?: React.MutableRefObject<number>;
+}
+
+const ThreadTunnel = ({ scrollProgress }: ScrollRef) => {
   const count = 250;
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
@@ -11,31 +16,22 @@ const ThreadTunnel = () => {
     const d1 = new Float32Array(count * 4);
     const d2 = new Float32Array(count * 4);
     for (let i = 0; i < count; i++) {
-      // 1. Angle with chaotic clustering
       let angle = Math.random() * Math.PI * 2;
-      // Add severe clustering by pulling angles towards certain poles
       angle +=
         Math.sign(Math.sin(angle)) *
         Math.pow(Math.abs(Math.sin(angle * 3.0)), 2.0) *
         1.5;
 
       d1[i * 4 + 0] = angle;
-      // 2. Radius from center (pushed outward, fewer near center)
       d1[i * 4 + 1] = Math.pow(Math.random(), 0.97) * 10.0 + 2.0;
-      // 3. Phase offset
       d1[i * 4 + 2] = Math.random() * Math.PI * 2;
-      // 4. Speed
       d1[i * 4 + 3] = Math.random() * 0.8 + 0.1;
 
-      // 93% thin threads, 7% thicker main beams
       const isThick = Math.random() > 0.99;
-      // Thickness
       d2[i * 4 + 0] = isThick
         ? Math.random() * 0.04 + 0.015
         : Math.random() * 0.004 + 0.0005;
-      // Streak length (more pulses per thread)
       d2[i * 4 + 1] = Math.random() * 5.0 + 3.0;
-      // Brightness
       d2[i * 4 + 2] = isThick
         ? Math.random() * 0.25 + 0.15
         : Math.random() * 0.3 + 0.05;
@@ -64,6 +60,8 @@ const ThreadTunnel = () => {
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      materialRef.current.uniforms.uScrollProgress.value =
+        scrollProgress?.current ?? 0;
     }
   });
 
@@ -77,6 +75,9 @@ const ThreadTunnel = () => {
     varying float vBrightness;
 
     uniform float uTime;
+    uniform float uScrollProgress;
+    uniform float uThreadOrigin;
+    uniform float uThreadLengthEnd;
 
     void main() {
         float angle = aData1.x;
@@ -86,17 +87,16 @@ const ThreadTunnel = () => {
         
         float thickness = aData2.x;
         float streakLength = aData2.y;
-        vBrightness = aData2.z;
         
         vec3 pos = position;
         
         pos.x *= thickness;
         pos.z *= thickness;
         
-        float normalizedY = pos.y + 0.5; // 0 to 1
-        float worldZ = mix(-38.0, 60.0, normalizedY);
+        float normalizedY = pos.y + 0.5;
+        float worldZ = mix(uThreadOrigin, uThreadLengthEnd, normalizedY);
         
-        float taper = smoothstep(-38.0, 10.0, worldZ);
+        float taper = smoothstep(uThreadOrigin, -5.0, worldZ);
         
         float wave1 = sin(worldZ * 0.1 - uTime * 0.3 + phase) * 1.5 * taper;
         float wave2 = cos(worldZ * 0.15 - uTime * 0.2 + phase * 2.0) * 1.5 * taper;
@@ -107,9 +107,10 @@ const ThreadTunnel = () => {
         
         vec3 finalPos = vec3(pos.x + xOffset, pos.z + yOffset, worldZ);
         
-        // Streak pulses stream forward (towards camera)
-        vStreak = normalizedY * streakLength - uTime * speed * 15.0 + phase;
+        float rushBoost = 1.0 + uScrollProgress * uScrollProgress * 15.0;
+        vStreak = normalizedY * streakLength - uTime * speed * 15.0 * rushBoost + phase;
         vAlphaPhase = normalizedY;
+        vBrightness = aData2.z * (1.0 + uScrollProgress * 2.0);
         
         gl_Position = projectionMatrix * modelViewMatrix * vec4(finalPos, 1.0);
     }
@@ -126,13 +127,9 @@ const ThreadTunnel = () => {
     void main() {
         float streakPhase = fract(vStreak);
         
-        // Bright leading edge with a longer tail for motion feel
         float streak = pow(streakPhase, 2.0);
-        
-        // Hot spark at the leading edge
         float spark = pow(streakPhase, 6.0) * 2.5;
         
-        // Fade at thread ends to avoid clipping
         float endFade = smoothstep(0.0, 0.05, vAlphaPhase) * smoothstep(1.0, 0.95, vAlphaPhase);
         
         float alpha = (streak * 0.4 + spark) * endFade * vBrightness;
@@ -150,7 +147,12 @@ const ThreadTunnel = () => {
         transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        uniforms={{ uTime: { value: 0 } }}
+        uniforms={{
+          uTime: { value: 0 },
+          uScrollProgress: { value: 0 },
+          uThreadOrigin: { value: THREAD_ORIGIN },
+          uThreadLengthEnd: { value: THREAD_LENGTH_END },
+        }}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
       />
@@ -226,12 +228,14 @@ const BackgroundWeb = () => {
   );
 };
 
-const CenterGlow = () => {
+const CenterGlow = ({ scrollProgress }: ScrollRef) => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      materialRef.current.uniforms.uScrollProgress.value =
+        scrollProgress?.current ?? 0;
     }
   });
 
@@ -243,7 +247,10 @@ const CenterGlow = () => {
         transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        uniforms={{ uTime: { value: 0 } }}
+        uniforms={{
+          uTime: { value: 0 },
+          uScrollProgress: { value: 0 },
+        }}
         vertexShader={
           /* glsl */ `
           varying vec2 vUv;
@@ -254,10 +261,14 @@ const CenterGlow = () => {
           /* glsl */ `
           varying vec2 vUv;
           uniform float uTime;
+          uniform float uScrollProgress;
           void main() {
             float d = distance(vUv, vec2(0.5));
             float pulse = 1.0 + sin(uTime * 0.5) * 0.05;
-            float glow = exp(-d * 18.0) * 0.8 * pulse; // Much dimmer and tighter sun
+            float sp = uScrollProgress * uScrollProgress;
+            float spread = mix(18.0, 4.0, sp);
+            float intensity = mix(0.8, 3.0, sp);
+            float glow = exp(-d * spread) * intensity * pulse;
             gl_FragColor = vec4(vec3(1.0), glow);
           }
         `
@@ -267,7 +278,7 @@ const CenterGlow = () => {
   );
 };
 
-const CameraController = () => {
+const CameraController = ({ scrollProgress }: ScrollRef) => {
   const { camera } = useThree();
   const mouseRef = useRef({ x: 0, y: 0 });
   const smoothRef = useRef({ x: 0, y: 0 });
@@ -282,20 +293,36 @@ const CameraController = () => {
   }, []);
 
   useFrame((state) => {
+    const p = scrollProgress?.current ?? 0;
+    const easedP = p * p;
+    const t = state.clock.elapsedTime;
+
     smoothRef.current.x += (mouseRef.current.x - smoothRef.current.x) * 0.02;
     smoothRef.current.y += (mouseRef.current.y - smoothRef.current.y) * 0.02;
 
-    const t = state.clock.elapsedTime;
+    const parallaxStrength = 1 - easedP;
+    camera.position.x = smoothRef.current.x * 0.6 * parallaxStrength;
+    camera.position.y = smoothRef.current.y * 0.6 * parallaxStrength;
 
-    camera.position.x = smoothRef.current.x * 0.6;
-    camera.position.y = smoothRef.current.y * 0.6;
-    camera.position.z = 8 - 4 * (1 - Math.exp(-t * 0.04));
-    camera.lookAt(0, 0, -20);
+    const idleZ = 8 - 4 * (1 - Math.exp(-t * 0.04));
+    camera.position.z = THREE.MathUtils.lerp(idleZ, -5, easedP);
+
+    const cam = camera as THREE.PerspectiveCamera;
+    cam.fov = THREE.MathUtils.lerp(45, 80, easedP);
+    cam.updateProjectionMatrix();
+
+    const lookAtZ = THREE.MathUtils.lerp(-20, -38, easedP);
+    camera.lookAt(0, 0, lookAtZ);
   });
+
   return null;
 };
 
-const HeroScene = () => {
+interface HeroSceneProps {
+  scrollProgress?: React.MutableRefObject<number>;
+}
+
+const HeroScene = ({ scrollProgress }: HeroSceneProps) => {
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
       <Canvas
@@ -304,11 +331,11 @@ const HeroScene = () => {
         gl={{ antialias: true, alpha: true }}
       >
         <color attach="background" args={["#030303"]} />
-        <fog attach="fog" args={["#030303", 10, 45]} />
+        <fog attach="fog" args={["#030303", 20, 60]} />
         <BackgroundWeb />
-        <ThreadTunnel />
-        <CenterGlow />
-        <CameraController />
+        <ThreadTunnel scrollProgress={scrollProgress} />
+        <CenterGlow scrollProgress={scrollProgress} />
+        <CameraController scrollProgress={scrollProgress} />
       </Canvas>
     </div>
   );

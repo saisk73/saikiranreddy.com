@@ -284,12 +284,102 @@ const CameraController = ({ scrollProgress }: ScrollRef) => {
   const smoothRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouseRef.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    const orientationZero = { beta: 0, gamma: 0 };
+    let hasOrientationZero = false;
+    let orientationEnabled = false;
+
+    const updateInput = (x: number, y: number) => {
+      mouseRef.current.x = THREE.MathUtils.clamp(x, -1, 1);
+      mouseRef.current.y = THREE.MathUtils.clamp(y, -1, 1);
     };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      updateInput(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1,
+      );
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      updateInput(
+        (touch.clientX / window.innerWidth) * 2 - 1,
+        -(touch.clientY / window.innerHeight) * 2 + 1,
+      );
+    };
+
+    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
+      if (e.beta == null || e.gamma == null) return;
+
+      if (!hasOrientationZero) {
+        orientationZero.beta = e.beta;
+        orientationZero.gamma = e.gamma;
+        hasOrientationZero = true;
+      }
+
+      // Map phone tilt deltas to the same [-1, 1] range as mouse movement.
+      const normalizedX = THREE.MathUtils.clamp(
+        (e.gamma - orientationZero.gamma) / 30,
+        -1,
+        1,
+      );
+      const normalizedY = THREE.MathUtils.clamp(
+        -(e.beta - orientationZero.beta) / 30,
+        -1,
+        1,
+      );
+
+      updateInput(normalizedX, normalizedY);
+    };
+
+    const enableOrientation = () => {
+      if (orientationEnabled) return;
+      orientationEnabled = true;
+      window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+    };
+
+    const requestOrientationPermission = async () => {
+      const OrientationEvent = (
+        window as typeof window & {
+          DeviceOrientationEvent?: {
+            requestPermission?: () => Promise<"granted" | "denied">;
+          };
+        }
+      ).DeviceOrientationEvent;
+
+      if (typeof OrientationEvent?.requestPermission === "function") {
+        try {
+          const result = await OrientationEvent.requestPermission();
+          if (result === "granted") enableOrientation();
+        } catch {
+          // Permission rejected or unavailable; touch controls still work.
+        }
+        return;
+      }
+
+      enableOrientation();
+    };
+
+    const handleFirstTouch = () => {
+      void requestOrientationPermission();
+    };
+
     window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchstart", handleFirstTouch, { passive: true });
+    void requestOrientationPermission();
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchstart", handleFirstTouch);
+      window.removeEventListener(
+        "deviceorientation",
+        handleDeviceOrientation,
+        true,
+      );
+    };
   }, []);
 
   useFrame((state) => {

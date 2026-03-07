@@ -66,6 +66,17 @@ const Home: NextPage = () => {
       {/* Main Content */}
       <CustomCursor />
       
+      <div
+        className="hero-flash"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#fff',
+          opacity: 0,
+          zIndex: 50,
+          pointerEvents: 'none',
+        }}
+      />
       <div className={`app-content ${loading ? 'app-content--hidden' : ''}`}>
         <SmoothScroll>
           <main>

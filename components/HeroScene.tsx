@@ -94,9 +94,9 @@ const ThreadTunnel = () => {
         pos.z *= thickness;
         
         float normalizedY = pos.y + 0.5; // 0 to 1
-        float worldZ = mix(-25.0, 60.0, normalizedY);
+        float worldZ = mix(-38.0, 60.0, normalizedY);
         
-        float taper = smoothstep(-25.0, 60.0, worldZ);
+        float taper = smoothstep(-38.0, 10.0, worldZ);
         
         float wave1 = sin(worldZ * 0.1 - uTime * 0.3 + phase) * 1.5 * taper;
         float wave2 = cos(worldZ * 0.15 - uTime * 0.2 + phase * 2.0) * 1.5 * taper;
@@ -289,7 +289,7 @@ const CameraController = () => {
 
     camera.position.x = smoothRef.current.x * 0.6;
     camera.position.y = smoothRef.current.y * 0.6;
-    camera.position.z = 8 - t * 0.15;
+    camera.position.z = 8 - 4 * (1 - Math.exp(-t * 0.04));
     camera.lookAt(0, 0, -20);
   });
   return null;

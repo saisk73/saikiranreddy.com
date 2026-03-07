@@ -214,7 +214,8 @@ const Loader = ({
 
       animationRef.current = requestAnimationFrame(animate);
     } catch (e) {
-      console.error("Three.js initialization failed:", e);
+      // Some automated/headless browsers cannot create a WebGL context.
+      // In that case, skip the intro instead of surfacing a runtime overlay.
       if (onFinishRef.current && !finishedRef.current) {
         finishedRef.current = true;
         onFinishRef.current();

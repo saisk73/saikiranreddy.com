@@ -1,363 +1,313 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useRef, useMemo, useState, useEffect } from 'react';
-import * as THREE from 'three';
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
+import * as THREE from "three";
 
-// Dotted Globe
-const DottedGlobe = () => {
-  const globeRef = useRef<THREE.Group>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({
-        x: (e.clientX / window.innerWidth) * 2 - 1,
-        y: -(e.clientY / window.innerHeight) * 2 + 1,
-      });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  // Generate points on a sphere using fibonacci distribution for even spacing
-  const { positions, scales } = useMemo(() => {
-    const points: THREE.Vector3[] = [];
-    const scales: number[] = [];
-    const numPoints = 1200;
-    const radius = 2.5;
-    
-    // Fibonacci sphere distribution for even point spacing
-    const goldenRatio = (1 + Math.sqrt(5)) / 2;
-    
-    for (let i = 0; i < numPoints; i++) {
-      const theta = 2 * Math.PI * i / goldenRatio;
-      const phi = Math.acos(1 - 2 * (i + 0.5) / numPoints);
-      
-      const x = radius * Math.sin(phi) * Math.cos(theta);
-      const y = radius * Math.sin(phi) * Math.sin(theta);
-      const z = radius * Math.cos(phi);
-      
-      points.push(new THREE.Vector3(x, y, z));
-      
-      // Vary dot sizes slightly
-      scales.push(0.015 + Math.random() * 0.01);
-    }
-    
-    return { positions: points, scales };
-  }, []);
-
-  // Create instanced mesh for performance
+const ThreadTunnel = () => {
+  const count = 250;
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
+
+  const { data1, data2 } = useMemo(() => {
+    const d1 = new Float32Array(count * 4);
+    const d2 = new Float32Array(count * 4);
+    for (let i = 0; i < count; i++) {
+      // 1. Angle with chaotic clustering
+      let angle = Math.random() * Math.PI * 2;
+      // Add severe clustering by pulling angles towards certain poles
+      angle +=
+        Math.sign(Math.sin(angle)) *
+        Math.pow(Math.abs(Math.sin(angle * 3.0)), 2.0) *
+        1.5;
+
+      d1[i * 4 + 0] = angle;
+      // 2. Radius from center (pushed outward, fewer near center)
+      d1[i * 4 + 1] = Math.pow(Math.random(), 0.97) * 10.0 + 2.0;
+      // 3. Phase offset
+      d1[i * 4 + 2] = Math.random() * Math.PI * 2;
+      // 4. Speed
+      d1[i * 4 + 3] = Math.random() * 0.8 + 0.1;
+
+      // 93% thin threads, 7% thicker main beams
+      const isThick = Math.random() > 0.99;
+      // Thickness
+      d2[i * 4 + 0] = isThick
+        ? Math.random() * 0.04 + 0.015
+        : Math.random() * 0.004 + 0.0005;
+      // Streak length (more pulses per thread)
+      d2[i * 4 + 1] = Math.random() * 5.0 + 3.0;
+      // Brightness
+      d2[i * 4 + 2] = isThick
+        ? Math.random() * 0.25 + 0.15
+        : Math.random() * 0.3 + 0.05;
+      d2[i * 4 + 3] = 0;
+    }
+    return { data1: d1, data2: d2 };
+  }, []);
+
+  const geometry = useMemo(() => {
+    const geo = new THREE.CylinderGeometry(1, 1, 1, 5, 40);
+    geo.setAttribute("aData1", new THREE.InstancedBufferAttribute(data1, 4));
+    geo.setAttribute("aData2", new THREE.InstancedBufferAttribute(data2, 4));
+    return geo;
+  }, [data1, data2]);
 
   useEffect(() => {
-    if (!meshRef.current) return;
-    
-    positions.forEach((pos, i) => {
-      dummy.position.copy(pos);
-      dummy.scale.setScalar(scales[i]);
-      dummy.updateMatrix();
-      meshRef.current!.setMatrixAt(i, dummy.matrix);
-    });
-    
-    meshRef.current.instanceMatrix.needsUpdate = true;
-  }, [positions, scales, dummy]);
-
-  useFrame((state) => {
-    if (globeRef.current) {
-      // Continuous rotation
-      globeRef.current.rotation.y += 0.002;
-      
-      // Mouse influence on rotation
-      globeRef.current.rotation.x += (mousePos.y * 0.3 - globeRef.current.rotation.x) * 0.02;
-      globeRef.current.rotation.z += (mousePos.x * 0.1 - globeRef.current.rotation.z) * 0.02;
-    }
-  });
-
-  return (
-    <group ref={globeRef}>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, positions.length]}>
-        <sphereGeometry args={[1, 8, 8]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
-      </instancedMesh>
-    </group>
-  );
-};
-
-// Latitude/Longitude Rings
-const GlobeRings = () => {
-  const ringsRef = useRef<THREE.Group>(null);
-  
-  const rings = useMemo(() => {
-    const ringData: { radius: number; rotation: [number, number, number]; opacity: number }[] = [];
-    const radius = 2.5;
-    
-    // Latitude rings
-    for (let i = -2; i <= 2; i++) {
-      const y = i * 0.5;
-      const ringRadius = Math.sqrt(radius * radius - y * y);
-      if (ringRadius > 0) {
-        ringData.push({
-          radius: ringRadius,
-          rotation: [Math.PI / 2, 0, 0] as [number, number, number],
-          opacity: 0.1 + Math.abs(i) * 0.02,
-        });
+    if (meshRef.current) {
+      const dummy = new THREE.Object3D();
+      for (let i = 0; i < count; i++) {
+        meshRef.current.setMatrixAt(i, dummy.matrix);
       }
+      meshRef.current.instanceMatrix.needsUpdate = true;
     }
-    
-    return ringData;
   }, []);
 
   useFrame((state) => {
-    if (ringsRef.current) {
-      ringsRef.current.rotation.y += 0.002;
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
     }
   });
 
-  return (
-    <group ref={ringsRef}>
-      {rings.map((ring, i) => (
-        <mesh key={i} rotation={ring.rotation} position={[0, (i - 2) * 0.5, 0]}>
-          <torusGeometry args={[ring.radius, 0.003, 16, 100]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={ring.opacity} />
-        </mesh>
-      ))}
-      
-      {/* Equator ring - more prominent */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[2.5, 0.005, 16, 100]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.2} />
-      </mesh>
-      
-      {/* Vertical meridian rings */}
-      <mesh rotation={[0, 0, 0]}>
-        <torusGeometry args={[2.5, 0.003, 16, 100]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.08} />
-      </mesh>
-      <mesh rotation={[0, Math.PI / 2, 0]}>
-        <torusGeometry args={[2.5, 0.003, 16, 100]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.08} />
-      </mesh>
-    </group>
-  );
-};
+  const vertexShader = useMemo(
+    () => /* glsl */ `
+    attribute vec4 aData1;
+    attribute vec4 aData2;
 
-// Orbital Arc Lines
-const OrbitalArcs = () => {
-  const arcsRef = useRef<THREE.Group>(null);
+    varying float vStreak;
+    varying float vAlphaPhase;
+    varying float vBrightness;
 
-  const arcs = useMemo(() => {
-    const arcData: { curve: THREE.CatmullRomCurve3; speed: number }[] = [];
-    const radius = 3.2;
-    
-    // Create several orbital arcs at different angles
-    for (let i = 0; i < 3; i++) {
-      const points: THREE.Vector3[] = [];
-      const angleOffset = (i * Math.PI * 2) / 3;
-      const tilt = 0.3 + i * 0.2;
-      
-      for (let j = 0; j <= 50; j++) {
-        const t = (j / 50) * Math.PI * 0.6 - Math.PI * 0.3;
-        const x = radius * Math.cos(t + angleOffset);
-        const y = radius * Math.sin(t) * Math.sin(tilt);
-        const z = radius * Math.sin(t + angleOffset);
-        points.push(new THREE.Vector3(x, y, z));
-      }
-      
-      arcData.push({
-        curve: new THREE.CatmullRomCurve3(points),
-        speed: 0.001 + i * 0.0005,
-      });
-    }
-    
-    return arcData;
-  }, []);
+    uniform float uTime;
 
-  useFrame((state) => {
-    if (arcsRef.current) {
-      arcsRef.current.rotation.y += 0.001;
-    }
-  });
-
-  return (
-    <group ref={arcsRef}>
-      {arcs.map((arc, i) => {
-        const points = arc.curve.getPoints(50);
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.15 });
-        const lineObj = new THREE.Line(geometry, material);
+    void main() {
+        float angle = aData1.x;
+        float radius = aData1.y;
+        float phase = aData1.z;
+        float speed = aData1.w;
         
-        return (
-          <primitive key={i} object={lineObj} />
-        );
-      })}
-    </group>
+        float thickness = aData2.x;
+        float streakLength = aData2.y;
+        vBrightness = aData2.z;
+        
+        vec3 pos = position;
+        
+        pos.x *= thickness;
+        pos.z *= thickness;
+        
+        float normalizedY = pos.y + 0.5; // 0 to 1
+        float worldZ = mix(-25.0, 60.0, normalizedY);
+        
+        float taper = smoothstep(-25.0, 60.0, worldZ);
+        
+        float wave1 = sin(worldZ * 0.1 - uTime * 0.3 + phase) * 1.5 * taper;
+        float wave2 = cos(worldZ * 0.15 - uTime * 0.2 + phase * 2.0) * 1.5 * taper;
+        
+        float currentRadius = radius * taper;
+        float xOffset = cos(angle) * currentRadius + wave1;
+        float yOffset = sin(angle) * currentRadius + wave2;
+        
+        vec3 finalPos = vec3(pos.x + xOffset, pos.z + yOffset, worldZ);
+        
+        // Streak pulses stream forward (towards camera)
+        vStreak = normalizedY * streakLength - uTime * speed * 15.0 + phase;
+        vAlphaPhase = normalizedY;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(finalPos, 1.0);
+    }
+  `,
+    [],
   );
-};
 
-// Floating Particles around globe
-const FloatingParticles = () => {
-  const particlesRef = useRef<THREE.Points>(null);
-  
-  const positions = useMemo(() => {
-    const count = 150;
-    const positions = new Float32Array(count * 3);
-    
-    for (let i = 0; i < count; i++) {
-      // Distribute in a shell around the globe
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const radius = 3 + Math.random() * 2;
-      
-      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-      positions[i * 3 + 2] = radius * Math.cos(phi);
-    }
-    
-    return positions;
-  }, []);
+  const fragmentShader = useMemo(
+    () => /* glsl */ `
+    varying float vStreak;
+    varying float vAlphaPhase;
+    varying float vBrightness;
 
-  useFrame((state) => {
-    if (particlesRef.current) {
-      particlesRef.current.rotation.y = state.clock.elapsedTime * 0.03;
-      particlesRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.05) * 0.1;
+    void main() {
+        float streakPhase = fract(vStreak);
+        
+        // Bright leading edge with a longer tail for motion feel
+        float streak = pow(streakPhase, 2.0);
+        
+        // Hot spark at the leading edge
+        float spark = pow(streakPhase, 6.0) * 2.5;
+        
+        // Fade at thread ends to avoid clipping
+        float endFade = smoothstep(0.0, 0.05, vAlphaPhase) * smoothstep(1.0, 0.95, vAlphaPhase);
+        
+        float alpha = (streak * 0.4 + spark) * endFade * vBrightness;
+        
+        gl_FragColor = vec4(vec3(1.0), alpha);
     }
-  });
+  `,
+    [],
+  );
 
   return (
-    <points ref={particlesRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.02}
-        color="#ffffff"
+    <instancedMesh ref={meshRef} args={[geometry, undefined as any, count]}>
+      <shaderMaterial
+        ref={materialRef}
         transparent
-        opacity={0.4}
-        sizeAttenuation
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={{ uTime: { value: 0 } }}
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
       />
-    </points>
+    </instancedMesh>
   );
 };
 
-// Connection lines between random globe points
-const ConnectionLines = () => {
-  const linesRef = useRef<THREE.Group>(null);
-
-  const lines = useMemo(() => {
-    const lineData: THREE.Vector3[][] = [];
-    const radius = 2.5;
-    const numLines = 8;
-    
-    for (let i = 0; i < numLines; i++) {
-      // Generate two random points on the sphere
-      const theta1 = Math.random() * Math.PI * 2;
-      const phi1 = Math.acos(2 * Math.random() - 1);
-      const theta2 = Math.random() * Math.PI * 2;
-      const phi2 = Math.acos(2 * Math.random() - 1);
-      
-      const start = new THREE.Vector3(
-        radius * Math.sin(phi1) * Math.cos(theta1),
-        radius * Math.sin(phi1) * Math.sin(theta1),
-        radius * Math.cos(phi1)
-      );
-      
-      const end = new THREE.Vector3(
-        radius * Math.sin(phi2) * Math.cos(theta2),
-        radius * Math.sin(phi2) * Math.sin(theta2),
-        radius * Math.cos(phi2)
-      );
-      
-      // Create arc between points (great circle approximation)
-      const points: THREE.Vector3[] = [];
-      for (let j = 0; j <= 30; j++) {
-        const t = j / 30;
-        const point = new THREE.Vector3().lerpVectors(start, end, t);
-        point.normalize().multiplyScalar(radius + Math.sin(t * Math.PI) * 0.3);
-        points.push(point);
-      }
-      
-      lineData.push(points);
-    }
-    
-    return lineData;
-  }, []);
+const BackgroundWeb = () => {
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
 
   useFrame((state) => {
-    if (linesRef.current) {
-      linesRef.current.rotation.y += 0.002;
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
     }
   });
 
   return (
-    <group ref={linesRef}>
-      {lines.map((points, i) => {
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.1 });
-        const lineObj = new THREE.Line(geometry, material);
-        return (
-          <primitive key={i} object={lineObj} />
-        );
-      })}
-    </group>
+    <mesh position={[0, 0, -40]} scale={100}>
+      <planeGeometry args={[1, 1]} />
+      <shaderMaterial
+        ref={materialRef}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={{ uTime: { value: 0 } }}
+        vertexShader={
+          /* glsl */ `
+          varying vec2 vUv;
+          void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+        `
+        }
+        fragmentShader={
+          /* glsl */ `
+          varying vec2 vUv;
+          uniform float uTime;
+          
+          float hash11(float p) { return fract(sin(p * 78.233) * 43758.5453); }
+          
+          void main() {
+            vec2 uv = vUv * 2.0 - 1.0;
+            uv.x *= 1.5;
+            
+            float web = 0.0;
+            float t = uTime * 0.5;
+            
+            for(float i = 0.0; i < 35.0; i++) {
+              float ang = hash11(i * 1.34) * 3.14159;
+              float off = (hash11(i * 2.71) - 0.5) * 3.0;
+              vec2 n = vec2(cos(ang), sin(ang));
+              float d = abs(dot(uv, n) - off);
+              
+              float thick = mix(0.0005, 0.003, hash11(i * 3.11));
+              
+              float along = dot(uv, vec2(-n.y, n.x));
+              float dash = sin(along * mix(2.0, 8.0, hash11(i)) + t * mix(0.5, 3.0, hash11(i*1.9)));
+              float dashMask = smoothstep(-0.2, 0.5, dash);
+              
+              float lineEnergy = smoothstep(thick, thick * 0.1, d) * dashMask;
+              lineEnergy *= mix(0.02, 0.15, hash11(i * 4.2)); 
+              
+              web += lineEnergy;
+            }
+            
+            float vignette = smoothstep(1.0, 0.1, length(uv));
+            web *= vignette;
+            
+            gl_FragColor = vec4(vec3(1.0), web);
+          }
+        `
+        }
+      />
+    </mesh>
   );
 };
 
-// Camera Controller
+const CenterGlow = () => {
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
+
+  useFrame((state) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+    }
+  });
+
+  return (
+    <mesh position={[0, 0, -38]}>
+      <planeGeometry args={[30, 30]} />
+      <shaderMaterial
+        ref={materialRef}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={{ uTime: { value: 0 } }}
+        vertexShader={
+          /* glsl */ `
+          varying vec2 vUv;
+          void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+        `
+        }
+        fragmentShader={
+          /* glsl */ `
+          varying vec2 vUv;
+          uniform float uTime;
+          void main() {
+            float d = distance(vUv, vec2(0.5));
+            float pulse = 1.0 + sin(uTime * 0.5) * 0.05;
+            float glow = exp(-d * 18.0) * 0.8 * pulse; // Much dimmer and tighter sun
+            gl_FragColor = vec4(vec3(1.0), glow);
+          }
+        `
+        }
+      />
+    </mesh>
+  );
+};
+
 const CameraController = () => {
   const { camera } = useThree();
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const mouseRef = useRef({ x: 0, y: 0 });
+  const smoothRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({
-        x: (e.clientX / window.innerWidth) * 2 - 1,
-        y: -(e.clientY / window.innerHeight) * 2 + 1,
-      });
+      mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseRef.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  useFrame(() => {
-    camera.position.x += (mousePos.x * 1 - camera.position.x) * 0.02;
-    camera.position.y += (mousePos.y * 0.5 - camera.position.y) * 0.02;
-    camera.lookAt(0, 0, 0);
-  });
+  useFrame((state) => {
+    smoothRef.current.x += (mouseRef.current.x - smoothRef.current.x) * 0.02;
+    smoothRef.current.y += (mouseRef.current.y - smoothRef.current.y) * 0.02;
 
+    const t = state.clock.elapsedTime;
+
+    camera.position.x = smoothRef.current.x * 0.6;
+    camera.position.y = smoothRef.current.y * 0.6;
+    camera.position.z = 8 - t * 0.15;
+    camera.lookAt(0, 0, -20);
+  });
   return null;
 };
 
 const HeroScene = () => {
   return (
-    <div 
-      style={{ 
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 1,
-      }}
-    >
+    <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
       <Canvas
-        camera={{ position: [0, 0, 7], fov: 55 }}
+        camera={{ position: [0, 0, 8], fov: 45 }}
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true }}
       >
-        <color attach="background" args={['#000000']} />
-        <fog attach="fog" args={['#000000', 6, 15]} />
-        
-        {/* Main Globe */}
-        <DottedGlobe />
-        <GlobeRings />
-        <OrbitalArcs />
-        <FloatingParticles />
-        <ConnectionLines />
-        
-        {/* Camera Controller */}
+        <color attach="background" args={["#030303"]} />
+        <fog attach="fog" args={["#030303", 10, 45]} />
+        <BackgroundWeb />
+        <ThreadTunnel />
+        <CenterGlow />
         <CameraController />
       </Canvas>
     </div>
